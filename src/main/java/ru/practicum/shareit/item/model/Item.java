@@ -1,37 +1,38 @@
 package ru.practicum.shareit.item.model;
 
-import lombok.*;
-import ru.practicum.shareit.request.model.ItemRequest;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import ru.practicum.shareit.user.model.User;
 
-import jakarta.persistence.*;
-
+/**
+ * TODO Sprint add-controllers.
+ */
 @Entity
-@Table(name = "items")
-@Getter
-@Setter
+@Table(schema = "public", name = "ITEM")
+@Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class Item {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ITEM_ID_SEQ")
+    @SequenceGenerator(name = "ITEM_ID_SEQ", sequenceName = "ITEM_ID_SEQ", allocationSize = 1)
     private Long id;
-
-    @Column(length = 50, nullable = false)
     private String name;
-
-    @Column(length = 1000, nullable = false)
     private String description;
-
-    @Column(name = "is_available")
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "OWNER_ID", nullable = false, updatable = false)
+    private User user;
     private Boolean available;
-
-    @ManyToOne
-    @JoinColumn(name = "id_owner", referencedColumnName = "id", nullable = false)
-    private User owner;
-
-    @ManyToOne
-    @JoinColumn(name = "request_id", referencedColumnName = "id")
-    private ItemRequest request;
 }

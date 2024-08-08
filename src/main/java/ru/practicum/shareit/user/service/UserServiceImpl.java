@@ -1,66 +1,68 @@
 package ru.practicum.shareit.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.EntityNotFoundException;
+import ru.practicum.shareit.user.repository.UserRepository;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.dto.UserMapper;
+import ru.practicum.shareit.exception.ConflictException;
+import ru.practicum.shareit.exception.DataOperationException;
+import ru.practicum.shareit.exception.MissingValueException;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.repository.UserRepository;
 
 import java.util.List;
 
-import static java.util.stream.Collectors.toList;
-import static ru.practicum.shareit.user.dto.UserMapper.toUser;
-import static ru.practicum.shareit.user.dto.UserMapper.toUserDto;
-
 @Service
-@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
-    public List<UserDto> getAll() {
-        return userRepository.findAll().stream().map(UserMapper::toUserDto).collect(toList());
-    }
-
-    @Override
-    public UserDto getById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Not found User with Id: " + id));
-
-        return toUserDto(user);
-    }
-
-    @Transactional
-    @Override
-    public UserDto create(UserDto userDto) {
-        User user = toUser(userDto);
-        return toUserDto(userRepository.save(user));
-    }
-
-    @Transactional
-    @Override
-    public UserDto update(UserDto userDto, Long id) {
-        User updatedUser = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Not possible update User data " +
-                        "Not found User with Id: " + id));
-        if (userDto.getEmail() != null && !userDto.getEmail().isBlank()) {
-            updatedUser.setEmail(userDto.getEmail());
+    public UserDto addUser(UserDto userDto) {
+        String email = userDto.getEmail();
+        if (email == null) {
+            throw new MissingValueException();
         }
-        if (userDto.getName() != null && !userDto.getName().isBlank()) {
-            updatedUser.setName(userDto.getName());
+        User created;
+        try {
+            created = userRepository.save(userMapper.toEntity(userDto));
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException(e.getMessage());
         }
-
-        return toUserDto(updatedUser);
+        return userMapper.toDto(created);
     }
 
-    @Transactional
     @Override
-    public void delete(Long id) {
-        userRepository.deleteById(id);
+    public UserDto editUser(UserDto userDto, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(ConflictException::new);
+        String email = userDto.getEmail();
+        if (email != null && !email.equals(user.getEmail())) {
+            if (userRepository.findByEmail(email) != null) {
+                throw new ConflictException();
+            }
+        }
+        User updated = userRepository.save(userMapper.updateEntity(userDto, user));
+        return userMapper.toDto(updated);
+    }
+
+    @Override
+    public UserDto getUser(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        return userMapper.toDto(user);
+    }
+
+    @Override
+    public List<UserDto> getUsers() {
+        return userRepository.findAll().stream().map(userMapper::toDto).toList();
+    }
+
+    @Override
+    public UserDto deleteUser(Long userId) {
+        User deleted = userRepository.findById(userId).orElseThrow(DataOperationException::new);
+        userRepository.deleteById(userId);
+        return userMapper.toDto(deleted);
     }
 }
-

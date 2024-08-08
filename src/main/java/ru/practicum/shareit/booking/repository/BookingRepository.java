@@ -1,54 +1,94 @@
 package ru.practicum.shareit.booking.repository;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import ru.practicum.shareit.booking.dto.OutwardBookingDto;
 import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.booking.model.BookingStatus;
-import ru.practicum.shareit.item.model.Item;
-import ru.practicum.shareit.user.model.User;
+import ru.practicum.shareit.booking.model.Status;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
+@Repository
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-    List<Booking> findAllByItemIdOrderByStartAsc(Long itemId);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b join b.item i " +
+            "join b.booker bk " +
+            "where bk.id = :userId order by b.start desc")
+    List<OutwardBookingDto> findAllByUserId(Long userId);
 
-    List<Booking> findAllByItemIdOrderByStartDesc(Long itemId);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b join b.item i " +
+            "join b.booker bk " +
+            "where bk.id = :userId and b.status = :status order by b.start desc")
+    List<OutwardBookingDto> findAllByUserIdAndStatus(Long userId, Status status);
 
-    List<Booking> findAllByBooker(User booker, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b join b.item i " +
+            "join b.booker bk " +
+            "where bk.id = :userId " +
+            "and CURRENT_TIMESTAMP > b.start and CURRENT_TIMESTAMP < b.end order by b.start desc")
+    List<OutwardBookingDto> findAllByUserIdCurrent(Long userId);
 
-    List<Booking> findAllByBookerIdAndItemIdAndStatusEqualsAndEndIsBefore(Long bookerId, Long itemId,
-                                                                          BookingStatus status, LocalDateTime end);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b join b.item i " +
+            "join b.booker bk " +
+            "where bk.id = :userId and CURRENT_TIMESTAMP < b.start order by b.start desc")
+    List<OutwardBookingDto> findAllByUserIdFuture(Long userId);
 
-    List<Booking> findAllByBookerAndStartBeforeAndEndAfter(User booker, LocalDateTime start,
-                                                           LocalDateTime end, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b join b.item i " +
+            "join b.booker bk " +
+            "where bk.id = :userId and CURRENT_TIMESTAMP > b.end order by b.start desc")
+    List<OutwardBookingDto> findAllByUserIdPast(Long userId);
 
-    List<Booking> findAllByBookerAndEndBefore(User booker, LocalDateTime end, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b " +
+            "join b.item i join i.user u " +
+            "where u.id = :userId order by b.start desc")
+    List<OutwardBookingDto> findAllByOwnerId(Long userId);
 
-    List<Booking> findAllByBookerAndStartAfter(User booker, LocalDateTime start, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b " +
+            "join b.item i join i.user u " +
+            "where u.id = :userId and b.status = :status order by b.start desc")
+    List<OutwardBookingDto> findAllByOwnerIdAndStatus(Long userId, Status status);
 
-    List<Booking> findAllByBookerAndStatusEquals(User booker, BookingStatus status, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b " +
+            "join b.item i join i.user u " +
+            "where u.id = :userId " +
+            "and CURRENT_TIMESTAMP > b.start and CURRENT_TIMESTAMP < b.end order by b.start desc")
+    List<OutwardBookingDto> findAllByOwnerIdCurrent(Long userId);
 
-    List<Booking> findAllByItemOwner(User owner, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b " +
+            "join b.item i join i.user u " +
+            "where u.id = :userId " +
+            "and CURRENT_TIMESTAMP < b.start order by b.start desc")
+    List<OutwardBookingDto> findAllByOwnerIdFuture(Long userId);
 
-    List<Booking> findAllByItemOwnerAndStartBeforeAndEndAfter(User owner, LocalDateTime start,
-                                                              LocalDateTime end, Sort sort);
+    @Query(
+        "select new ru.practicum.shareit.booking.dto.OutwardBookingDto(b.id, b.start, b.end, b.item, b.booker, b.status) " +
+            "from Booking b " +
+            "join b.item i join i.user u " +
+            "where u.id = :userId " +
+            "and CURRENT_TIMESTAMP > b.end order by b.start desc")
+    List<OutwardBookingDto> findAllByOwnerIdPast(Long userId);
 
-    List<Booking> findAllByItemOwnerAndEndBefore(User owner, LocalDateTime end, Sort sort);
+    Booking findFirstByItemIdAndEndBeforeOrderByEndDesc(Long itemId, LocalDateTime currentDateTime);
 
-    List<Booking> findAllByItemOwnerAndStartAfter(User owner, LocalDateTime start, Sort sort);
+    Booking findFirstByItemIdAndStartAfterOrderByStartAsc(Long itemId, LocalDateTime currentDateTime);
 
-    List<Booking> findAllByItemOwnerAndStatusEquals(User owner, BookingStatus status, Sort sort);
-
-    List<Booking> findAllByItemIdAndStatus(Long itemId, BookingStatus approved,Sort sort);
-
-    List<Booking> findByItemInAndStatusEquals(List<Item> items, BookingStatus stat);
-
-    Optional<Booking> findFirstByItemIdInAndStartLessThanEqualAndStatus(List<Long> idItems, LocalDateTime now,
-                                                                        BookingStatus approved, Sort sort);
-
-    Optional<Booking> findFirstByItemIdInAndStartAfterAndStatus(List<Long> idItems, LocalDateTime now,
-                                                                BookingStatus approved, Sort sort);
-
+    Boolean existsByItemIdAndBookerIdAndEndIsLessThanEqual(Long itemId, Long userId, LocalDateTime now);
 }

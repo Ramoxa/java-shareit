@@ -1,24 +1,27 @@
 package ru.practicum.shareit.user.model;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
-import jakarta.persistence.*;
-
+/**
+ * TODO Sprint add-controllers.
+ */
 @Entity
-@Table(name = "users")
-@Getter
-@Setter
+@Table(schema = "public", name = "USERS")
+@Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "USER_ID_SEQ")
+    @SequenceGenerator(name = "USER_ID_SEQ", sequenceName = "USER_ID_SEQ", allocationSize = 1)
     private Long id;
-
-    @Column(length = 50, nullable = false)
     private String name;
-
-    @Column(unique = true, length = 50, nullable = false)
+    @NotNull
+    @Email
+    @Column(nullable = false, unique = true)
     private String email;
 }

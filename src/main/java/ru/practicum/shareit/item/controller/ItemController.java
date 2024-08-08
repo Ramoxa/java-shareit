@@ -1,5 +1,6 @@
 package ru.practicum.shareit.item.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -11,7 +12,6 @@ import ru.practicum.shareit.item.dto.ItemShortDto;
 import ru.practicum.shareit.item.service.ItemService;
 import ru.practicum.shareit.util.Create;
 
-import javax.validation.Valid;
 import java.util.Collections;
 import java.util.List;
 
@@ -41,10 +41,8 @@ public class ItemController {
     }
 
     @PatchMapping("/{id}")
-    public ItemDto update(@RequestBody ItemShortDto itemShortDto, @PathVariable Long id,
-                          @RequestHeader("X-Sharer-User-Id") Long userId) {
-        log.info("PATCH:/items/{id} request received with parameters: itemDto = {}, id = {}, userId = {}",
-                itemShortDto, id, userId);
+    public ItemDto update(@RequestBody ItemShortDto itemShortDto, @PathVariable Long id, @RequestHeader("X-Sharer-User-Id") Long userId) {
+        log.info("PATCH:/items/{id} request received with parameters: itemDto = {}, id = {}, userId = {}", itemShortDto, id, userId);
         return itemService.update(itemShortDto, id, userId);
     }
 
@@ -65,10 +63,8 @@ public class ItemController {
     }
 
     @PostMapping("/{itemId}/comment")
-    public CommentDto createComment(@PathVariable Long itemId, @RequestHeader("X-Sharer-User-Id") Long userId,
-                                    @Valid @RequestBody CommentShortDto commentShortDto) {
-        log.info("POST:/items/{itemId}/comment request received with parameters: itemId = {}, userId = {}, commentDto = {}",
-                itemId, userId, commentShortDto);
+    public CommentDto createComment(@PathVariable Long itemId, @RequestHeader("X-Sharer-User-Id") Long userId, @Valid @RequestBody CommentShortDto commentShortDto) {
+        log.info("POST:/items/{itemId}/comment request received with parameters: itemId = {}, userId = {}, commentDto = {}", itemId, userId, commentShortDto);
         return itemService.createComment(itemId, userId, commentShortDto);
     }
 }

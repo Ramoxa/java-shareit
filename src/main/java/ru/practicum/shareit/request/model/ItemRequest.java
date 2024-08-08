@@ -1,10 +1,10 @@
 package ru.practicum.shareit.request.model;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import ru.practicum.shareit.user.model.User;
 
-import javax.persistence.*;
-import javax.validation.constraints.NotBlank;
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity

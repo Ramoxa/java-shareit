@@ -1,24 +1,30 @@
 package ru.practicum.shareit.item.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import ru.practicum.shareit.util.Create;
+import lombok.Data;
+import ru.practicum.shareit.booking.model.Booking;
+import ru.practicum.shareit.item.validation.NullableNotBlankConstraint;
+import ru.practicum.shareit.user.model.User;
 
-@Getter
-@Setter
-@Builder(toBuilder = true)
+import java.util.HashSet;
+import java.util.Set;
+
+
+/**
+ * TODO Sprint add-controllers.
+ */
+@Data
+@Builder
 public class ItemDto {
     private Long id;
-
-    @NotBlank(groups = {Create.class})
+    @NullableNotBlankConstraint
     private String name;
-
-    @NotBlank(groups = {Create.class})
+    @NullableNotBlankConstraint
     private String description;
-
-    @NotNull(groups = {Create.class})
     private Boolean available;
+    private User user;
+    private Booking lastBooking;
+    private Booking nextBooking;
+    @Builder.Default
+    private Set<String> comments = new HashSet<>();
 }

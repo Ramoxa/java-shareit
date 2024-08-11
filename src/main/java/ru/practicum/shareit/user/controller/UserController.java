@@ -32,11 +32,11 @@ public class UserController {
         return new ResponseEntity<>(created, HttpStatus.OK);
     }
 
-    @PutMapping
-    public ResponseEntity editUser(@RequestBody @Valid @NotNull UserDto userDto) {
-        Long userId = userDto.getId();
+    @PatchMapping("/{userId}")
+    public ResponseEntity editUser(@RequestBody @Valid @NotNull UserDto userDto,
+                                   @PathVariable @Min(1) Long userId) {
         UserDto updated = userService.editUser(userDto, userId);
-        log.info("UserDto updated: " + updated.toString());
+        log.info("userDto updated: " + updated.toString());
         return new ResponseEntity(updated, HttpStatus.OK);
     }
 

@@ -1,72 +1,68 @@
 package ru.practicum.shareit.user.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import ru.practicum.shareit.exception.DuplicateEmailException;
-import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.EntityNotFoundException;
+import ru.practicum.shareit.user.repository.UserRepository;
 import ru.practicum.shareit.user.dto.UserDto;
 import ru.practicum.shareit.user.dto.UserMapper;
+import ru.practicum.shareit.exception.ConflictException;
+import ru.practicum.shareit.exception.DataOperationException;
+import ru.practicum.shareit.exception.MissingValueException;
 import ru.practicum.shareit.user.model.User;
-import ru.practicum.shareit.user.storage.UserStorage;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-    private final UserStorage userStorage;
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
-    public UserDto create(UserDto userDto) {
-        validateEmailUnique(userDto.getEmail());
-        User user = UserMapper.toUser(userDto);
-        return UserMapper.toUserDto(userStorage.create(user));
-    }
-
-    @Override
-    public UserDto getById(Long id) {
-        User user = userStorage.findById(id).orElseThrow(() -> new NotFoundException("User not found with ID: " + id));
-        return UserMapper.toUserDto(user);
-    }
-
-    @Override
-    public UserDto update(UserDto userDto, Long id) {
-        validateEmailUniqueForUpdate(id, userDto.getEmail());
-        User existingUser = userStorage.findById(id).orElseThrow(() -> new NotFoundException("User data cannot be updated. No user with ID: " + id));
-
-        if (userDto.getEmail() != null && !userDto.getEmail().isBlank()) {
-            existingUser.setEmail(userDto.getEmail());
+    public UserDto addUser(UserDto userDto) {
+        String email = userDto.getEmail();
+        if (email == null) {
+            throw new MissingValueException();
         }
-        if (userDto.getName() != null && !userDto.getName().isBlank()) {
-            existingUser.setName(userDto.getName());
+        User created;
+        try {
+            created = userRepository.save(userMapper.toEntity(userDto));
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException(e.getMessage());
         }
-
-        User updatedUser = userStorage.update(existingUser);
-        return UserMapper.toUserDto(updatedUser);
+        return userMapper.toDto(created);
     }
 
     @Override
-    public List<UserDto> findAll() {
-        return userStorage.findAll().stream().map(UserMapper::toUserDto).collect(Collectors.toList());
+    public UserDto editUser(UserDto userDto, Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(ConflictException::new);
+        String email = userDto.getEmail();
+        if (email != null && !email.equals(user.getEmail())) {
+            if (userRepository.findByEmail(email) != null) {
+                throw new ConflictException();
+            }
+        }
+        User updated = userRepository.save(userMapper.updateEntity(userDto, user));
+        return userMapper.toDto(updated);
     }
 
     @Override
-    public void delete(Long id) {
-        userStorage.delete(id);
+    public UserDto getUser(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        return userMapper.toDto(user);
     }
 
-    public void validateEmailUnique(String email) {
-        boolean emailExists = userStorage.findAll().stream().anyMatch(user -> user.getEmail().equals(email));
-        if (emailExists) {
-            throw new DuplicateEmailException("Email " + email + " already exists.");
-        }
+    @Override
+    public List<UserDto> getUsers() {
+        return userRepository.findAll().stream().map(userMapper::toDto).toList();
     }
 
-    public void validateEmailUniqueForUpdate(Long id, String email) {
-        boolean emailExists = userStorage.findAll().stream().anyMatch(user -> user.getEmail().equals(email) && !user.getId().equals(id));
-        if (emailExists) {
-            throw new DuplicateEmailException("Email " + email + " already exists.");
-        }
+    @Override
+    public UserDto deleteUser(Long userId) {
+        User deleted = userRepository.findById(userId).orElseThrow(DataOperationException::new);
+        userRepository.deleteById(userId);
+        return userMapper.toDto(deleted);
     }
 }

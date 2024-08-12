@@ -1,23 +1,16 @@
 package ru.practicum.shareit.user.dto;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import ru.practicum.shareit.util.Create;
-import ru.practicum.shareit.util.Update;
+import lombok.Data;
+import ru.practicum.shareit.user.validation.NullableNotBlankConstraint;
 
-@Getter
-@Setter
-@Builder(toBuilder = true)
+@Data
+@Builder
 public class UserDto {
     private Long id;
-
-    @NotBlank(groups = {Create.class})
+    @NullableNotBlankConstraint
     private String name;
-
-    @Email(groups = {Create.class, Update.class})
-    @NotBlank(groups = {Create.class})
+    @Email
     private String email;
 }

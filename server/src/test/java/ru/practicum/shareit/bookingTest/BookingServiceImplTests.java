@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Assertions;
 import ru.practicum.shareit.booking.dto.BookingDto;
 import ru.practicum.shareit.booking.dto.BookingRequestDto;
+import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.exception.ValidationException;
 import ru.practicum.shareit.user.dao.UserRepository;
 import ru.practicum.shareit.user.model.User;
 import ru.practicum.shareit.booking.mapper.BookingMapper;
@@ -36,8 +38,8 @@ class BookingServiceImplTests {
 
     private BookingService bookingService;
     private BookingRepository bookingRepository;
-    private final UserRepository userRepository;
-    private final ItemRepository itemRepository;
+    private UserRepository userRepository;
+    private ItemRepository itemRepository;
     private Booking booking;
     private BookingDto bookingDto;
     private BookingRequestDto bookingRequestDto;
@@ -48,6 +50,8 @@ class BookingServiceImplTests {
     @BeforeEach
     void setUp() {
         bookingRepository = mock(BookingRepository.class);
+        userRepository = mock(UserRepository.class);
+        itemRepository = mock(ItemRepository.class);
         bookingService = new BookingServiceImpl(bookingRepository, userRepository, itemRepository);
 
         user = User.builder()
@@ -55,14 +59,12 @@ class BookingServiceImplTests {
                 .name("TestUserName")
                 .email("TestUserEmail@test.com")
                 .build();
-        userRepository.save(user);
 
         owner = User.builder()
                 .id(2L)
                 .name("TestOwnerName")
                 .email("TestOwnerEmail@test.com")
                 .build();
-        userRepository.save(owner);
 
         item = Item.builder()
                 .id(1L)
@@ -72,7 +74,6 @@ class BookingServiceImplTests {
                 .available(true)
                 .owner(owner)
                 .build();
-        itemRepository.save(item);
 
         booking = Booking.builder()
                 .id(1L)
@@ -93,6 +94,9 @@ class BookingServiceImplTests {
         when(bookingRepository.findById(anyLong())).thenReturn(Optional.of(booking));
         when(bookingRepository.findAllByBookerIdOrderByStartDesc(anyLong())).thenReturn(List.of(booking));
         when(bookingRepository.findAllByItemOwnerIdOrderByStartDesc(anyLong())).thenReturn(List.of(booking));
+        when(userRepository.existsById(anyLong())).thenReturn(true);
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.of(item));
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
     }
 
     @Test
@@ -100,6 +104,35 @@ class BookingServiceImplTests {
         final BookingDto result = bookingService.createBooking(user.getId(), bookingRequestDto);
         validate(result);
         verify(bookingRepository, times(1)).save(any());
+    }
+
+    @Test
+    void createThrowsItemNotFoundException() {
+        when(itemRepository.findById(anyLong())).thenReturn(Optional.empty());
+        Assertions.assertThrows(NotFoundException.class, () -> bookingService.createBooking(user.getId(), bookingRequestDto));
+        verify(bookingRepository, times(0)).save(any());
+    }
+
+    @Test
+    void createThrowsEndDateBeforeNowException() {
+        bookingRequestDto.setEnd(LocalDateTime.now().minusDays(1));
+        Assertions.assertThrows(ValidationException.class, () -> bookingService.createBooking(user.getId(), bookingRequestDto));
+        verify(bookingRepository, times(0)).save(any());
+    }
+
+    @Test
+    void createThrowsUserIsOwnerException() {
+        item.setOwner(user);
+        bookingRequestDto.setItemId(item.getId());
+        Assertions.assertThrows(NotFoundException.class, () -> bookingService.createBooking(user.getId(), bookingRequestDto));
+        verify(bookingRepository, times(0)).save(any());
+    }
+
+    @Test
+    void createThrowsItemsNotAvailableException() {
+        item.setAvailable(false);
+        Assertions.assertThrows(ValidationException.class, () -> bookingService.createBooking(user.getId(), bookingRequestDto));
+        verify(bookingRepository, times(0)).save(any());
     }
 
     @Test
@@ -115,10 +148,27 @@ class BookingServiceImplTests {
     }
 
     @Test
+    void setApprovedThrowsUserIsNotOwnerException() {
+        Assertions.assertThrows(NotFoundException.class, () -> bookingService.approvedBooking(user.getId(), booking.getId(), true));
+    }
+
+    @Test
+    void setApprovedThrowsBookingAlreadyApprovedException() {
+        booking.setStatus(BookingStatus.APPROVED);
+        Assertions.assertThrows(ValidationException.class, () -> bookingService.approvedBooking(owner.getId(), booking.getId(), true));
+    }
+
+    @Test
     void findById() {
         BookingDto result = bookingService.getBookingById(booking.getId(), user.getId());
         validate(result);
         verify(bookingRepository, times(1)).findById(anyLong());
+    }
+
+    @Test
+    void findByIdThrowsNotFoundException() {
+        when(bookingRepository.findById(anyLong())).thenReturn(Optional.empty());
+        Assertions.assertThrows(NotFoundException.class, () -> bookingService.getBookingById(booking.getId(), user.getId()));
     }
 
     @Test
@@ -146,10 +196,10 @@ class BookingServiceImplTests {
 
     void validateList(List<BookingDto> result) {
         Assertions.assertNotNull(result);
-        Assertions.assertEquals(result.getFirst().getStart(), bookingDto.getStart());
-        Assertions.assertEquals(result.getFirst().getEnd(), bookingDto.getEnd());
-        Assertions.assertEquals(result.getFirst().getItem(), bookingDto.getItem());
-        Assertions.assertEquals(result.getFirst().getStatus(), bookingDto.getStatus());
-        Assertions.assertEquals(result.getFirst().getBooker(), bookingDto.getBooker());
+        Assertions.assertEquals(result.get(0).getStart(), bookingDto.getStart());
+        Assertions.assertEquals(result.get(0).getEnd(), bookingDto.getEnd());
+        Assertions.assertEquals(result.get(0).getItem(), bookingDto.getItem());
+        Assertions.assertEquals(result.get(0).getStatus(), bookingDto.getStatus());
+        Assertions.assertEquals(result.get(0).getBooker(), bookingDto.getBooker());
     }
 }

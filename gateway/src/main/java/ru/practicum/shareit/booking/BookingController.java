@@ -13,8 +13,6 @@ import ru.practicum.shareit.booking.dto.BookItemRequestDto;
 import ru.practicum.shareit.booking.dto.BookingState;
 import jakarta.validation.constraints.PositiveOrZero;
 
-
-
 @Controller
 @RequestMapping(path = "/bookings")
 @RequiredArgsConstructor

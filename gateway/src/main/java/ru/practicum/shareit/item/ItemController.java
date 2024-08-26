@@ -20,7 +20,7 @@ import ru.practicum.shareit.item.dto.ItemRequestDto;
 @RestController
 @RequestMapping("/items")
 public class ItemController {
-    private final String header = "X-Sharer-User-Id";
+    private final String header = "X_SHARER_USER_ID";
     private final ItemClient itemClient;
 
     @GetMapping

@@ -134,4 +134,35 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.end", is(bookingDto.getEnd().format(DateTimeFormatter.ISO_DATE_TIME))));
         verify(bookingService, times(1)).getBookingById(anyLong(), anyLong());
     }
+
+    @Test
+    void approvedBooking() throws Exception {
+        BookingDto bookingDto = getBookingDto();
+        when(bookingService.approvedBooking(anyLong(), anyLong(), anyBoolean())).thenReturn(bookingDto);
+        mockMvc.perform(patch("/bookings/1?approved=true")
+                        .header(header, 1L)
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(bookingDto.getId()), Long.class))
+                .andExpect(jsonPath("$.start", is(bookingDto.getStart().format(DateTimeFormatter.ISO_DATE_TIME))))
+                .andExpect(jsonPath("$.end", is(bookingDto.getEnd().format(DateTimeFormatter.ISO_DATE_TIME))));
+        verify(bookingService, times(1)).approvedBooking(anyLong(), anyLong(), anyBoolean());
+    }
+
+
+    @Test
+    void findAllByBookerAndStatus() throws Exception {
+        when(bookingService.findAllByBookerAndStatus(anyLong(), anyString())).thenReturn(Collections.emptyList());
+        mockMvc.perform(get("/bookings")
+                        .header(header, 1L)
+                        .characterEncoding(StandardCharsets.UTF_8)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+        verify(bookingService, times(1)).findAllByBookerAndStatus(anyLong(), anyString());
+    }
+
 }

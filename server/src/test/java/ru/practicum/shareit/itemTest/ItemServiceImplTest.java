@@ -8,14 +8,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.dao.BookingRepository;
+import ru.practicum.shareit.booking.mapper.BookingMapper;
 import ru.practicum.shareit.booking.model.Booking;
 import ru.practicum.shareit.booking.model.BookingStatus;
-import ru.practicum.shareit.comment.mapper.CommentMapper;
 import ru.practicum.shareit.comment.dao.CommentRepository;
 import ru.practicum.shareit.comment.dto.CommentDto;
 import ru.practicum.shareit.comment.dto.CommentRequestDto;
+import ru.practicum.shareit.comment.mapper.CommentMapper;
 import ru.practicum.shareit.comment.model.Comment;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
@@ -38,13 +38,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @SpringBootTest
 @RequiredArgsConstructor(onConstructor_ = @Autowired)
@@ -81,67 +76,24 @@ class ItemServiceImplTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.initMocks(this);
-        itemService = new ItemServiceImpl(
-                itemRepository,
-                userRepository,
-                bookingRepository,
-                commentRepository,
-                itemRequestRepository);
+        itemService = new ItemServiceImpl(itemRepository, userRepository, bookingRepository, commentRepository, itemRequestRepository);
 
-        user = User.builder()
-                .id(1L)
-                .name("TestUserName")
-                .email("UserEmail@test.com")
-                .build();
+        user = User.builder().id(1L).name("TestUserName").email("UserEmail@test.com").build();
 
-        owner = User.builder()
-                .id(2L)
-                .name("TestOwnerName")
-                .email("OwnerEmail@test.com")
-                .build();
+        owner = User.builder().id(2L).name("TestOwnerName").email("OwnerEmail@test.com").build();
 
-        itemRequest = ItemRequest.builder()
-                .id(1L)
-                .requestor(user)
-                .created(LocalDateTime.now())
-                .description("TestItemRequestDescription")
-                .build();
+        itemRequest = ItemRequest.builder().id(1L).requestor(user).created(LocalDateTime.now()).description("TestItemRequestDescription").build();
 
-        item = Item.builder()
-                .id(1L)
-                .name("TestItemName")
-                .description("TestItemDescription")
-                .request(itemRequest)
-                .available(true)
-                .owner(owner)
-                .bookings(new ArrayList<>())
-                .build();
+        item = Item.builder().id(1L).name("TestItemName").description("TestItemDescription").request(itemRequest).available(true).owner(owner).bookings(new ArrayList<>()).build();
 
-        booking = Booking.builder()
-                .id(1L)
-                .start(LocalDateTime.now().plusDays(1))
-                .end(LocalDateTime.now().plusDays(2))
-                .status(BookingStatus.APPROVED)
-                .booker(user)
-                .item(item)
-                .build();
+        booking = Booking.builder().id(1L).start(LocalDateTime.now().plusDays(1)).end(LocalDateTime.now().plusDays(2)).status(BookingStatus.APPROVED).booker(user).item(item).build();
 
-        comment = Comment.builder()
-                .id(1L)
-                .text("TestCommentText")
-                .item(item)
-                .author(owner)
-                .created(LocalDateTime.now())
-                .build();
+        comment = Comment.builder().id(1L).text("TestCommentText").item(item).author(owner).created(LocalDateTime.now()).build();
 
         commentDto = CommentMapper.toCommentDto(comment);
         commentRequestDto = new CommentRequestDto(comment.getText());
         itemDto = ItemMapper.toItemDto(item);
-        itemInfoDto = ItemMapper.toItemInfoDto(item,
-                BookingMapper.toBookingDateInfoDto(booking),
-                BookingMapper.toBookingDateInfoDto(booking),
-                List.of(CommentMapper.toCommentDto(comment))
-        );
+        itemInfoDto = ItemMapper.toItemInfoDto(item, BookingMapper.toBookingDateInfoDto(booking), BookingMapper.toBookingDateInfoDto(booking), List.of(CommentMapper.toCommentDto(comment)));
 
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.findById(owner.getId())).thenReturn(Optional.of(owner));
@@ -174,26 +126,14 @@ class ItemServiceImplTest {
     @Test
     void createWithInvalidUserId() {
         when(userRepository.findById(user.getId())).thenReturn(Optional.empty());
-        NotFoundException thrown = assertThrows(
-                NotFoundException.class,
-                () -> itemService.create(user.getId(), itemDto),
-                "Expected create() to throw, but it didn't"
-        );
+        NotFoundException thrown = assertThrows(NotFoundException.class, () -> itemService.create(user.getId(), itemDto), "Expected create() to throw, but it didn't");
         assertTrue(thrown.getMessage().contains("User id = " + user.getId() + " not found!"));
     }
 
     @Test
     void addComment() {
-        booking = Booking.builder()
-                .id(1L)
-                .start(LocalDateTime.now().minusDays(2))
-                .end(LocalDateTime.now().minusDays(1))
-                .status(BookingStatus.APPROVED)
-                .booker(user)
-                .item(item)
-                .build();
-        when(bookingRepository.findAllByBookerIdAndItemIdAndStatusAndEndBefore(anyLong(), anyLong(), any(), any()))
-                .thenReturn(List.of(booking));
+        booking = Booking.builder().id(1L).start(LocalDateTime.now().minusDays(2)).end(LocalDateTime.now().minusDays(1)).status(BookingStatus.APPROVED).booker(user).item(item).build();
+        when(bookingRepository.findAllByBookerIdAndItemIdAndStatusAndEndBefore(anyLong(), anyLong(), any(), any())).thenReturn(List.of(booking));
 
         CommentDto result = itemService.addComment(booking.getBooker().getId(), booking.getItem().getId(), commentRequestDto);
         Assertions.assertNotNull(result);
@@ -205,11 +145,7 @@ class ItemServiceImplTest {
     @Test
     void addCommentWithEmptyText() {
         commentRequestDto.setText("");
-        ValidationException thrown = assertThrows(
-                ValidationException.class,
-                () -> itemService.addComment(user.getId(), item.getId(), commentRequestDto),
-                "Expected addComment() to throw, but it didn't"
-        );
+        ValidationException thrown = assertThrows(ValidationException.class, () -> itemService.addComment(user.getId(), item.getId(), commentRequestDto), "Expected addComment() to throw, but it didn't");
         assertTrue(thrown.getMessage().contains("Comment is empty!"));
     }
 
@@ -217,21 +153,13 @@ class ItemServiceImplTest {
     void addCommentWithoutBooking() {
         when(bookingRepository.findAllByBookerIdAndItemIdAndStatusAndEndBefore(anyLong(), anyLong(), any(), any())).thenReturn(List.of());
 
-        ValidationException thrown = assertThrows(
-                ValidationException.class,
-                () -> itemService.addComment(user.getId(), item.getId(), commentRequestDto),
-                "Expected addComment() to throw, but it didn't"
-        );
+        ValidationException thrown = assertThrows(ValidationException.class, () -> itemService.addComment(user.getId(), item.getId(), commentRequestDto), "Expected addComment() to throw, but it didn't");
         assertTrue(thrown.getMessage().contains("Access error"));
     }
 
     @Test
     void updateItemNotOwnedByUser() {
-        NotFoundException thrown = assertThrows(
-                NotFoundException.class,
-                () -> itemService.update(user.getId(), item.getId(), itemDto),
-                "Expected update() to throw, but it didn't"
-        );
+        NotFoundException thrown = assertThrows(NotFoundException.class, () -> itemService.update(user.getId(), item.getId(), itemDto), "Expected update() to throw, but it didn't");
         assertTrue(thrown.getMessage().contains("Only the owner can edit an item!"));
     }
 
@@ -266,11 +194,7 @@ class ItemServiceImplTest {
 
     @Test
     void validationTest() {
-        ValidationException thrown = assertThrows(
-                ValidationException.class,
-                () -> itemService.create(null, itemDto),
-                "Expected create() to throw, but it didn't"
-        );
+        ValidationException thrown = assertThrows(ValidationException.class, () -> itemService.create(null, itemDto), "Expected create() to throw, but it didn't");
         assertTrue(thrown.getMessage().contains("Owner id not specified!"));
     }
 }

@@ -3,138 +3,129 @@ package ru.practicum.shareit.item.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.practicum.shareit.booking.dao.BookingRepository;
-import ru.practicum.shareit.booking.dto.BookingDateInfoDto;
-import ru.practicum.shareit.booking.mapper.BookingMapper;
-import ru.practicum.shareit.booking.model.BookingStatus;
-import ru.practicum.shareit.comment.dao.CommentRepository;
-import ru.practicum.shareit.comment.dto.CommentDto;
-import ru.practicum.shareit.comment.dto.CommentRequestDto;
-import ru.practicum.shareit.comment.model.Comment;
-import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.exception.ValidationException;
-import ru.practicum.shareit.item.dto.ItemInfoDto;
-import ru.practicum.shareit.item.mapper.ItemMapper;
-import ru.practicum.shareit.item.dao.ItemRepository;
-import ru.practicum.shareit.item.dto.ItemDto;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.shareit.exception.IdNotFoundException;
+import ru.practicum.shareit.item.dto.comment.CommentCreateDTO;
+import ru.practicum.shareit.item.dto.comment.CommentDTO;
+import ru.practicum.shareit.item.dto.item.ItemCreateDTO;
+import ru.practicum.shareit.item.dto.item.ItemDTO;
+import ru.practicum.shareit.item.dto.item.ItemDTOWithBookings;
+import ru.practicum.shareit.item.dto.item.ItemUpdateDTO;
+import ru.practicum.shareit.item.mapper.CommentDTOMapper;
+import ru.practicum.shareit.item.mapper.ItemDTOMapper;
+import ru.practicum.shareit.item.model.Comment;
 import ru.practicum.shareit.item.model.Item;
+import ru.practicum.shareit.item.repository.CommentRepository;
+import ru.practicum.shareit.item.repository.ItemRepository;
 import ru.practicum.shareit.request.model.ItemRequest;
-import ru.practicum.shareit.user.dao.UserRepository;
-import ru.practicum.shareit.comment.mapper.CommentMapper;
-import ru.practicum.shareit.request.dao.ItemRequestRepository;
+import ru.practicum.shareit.request.repository.ItemRequestRepository;
+import ru.practicum.shareit.user.model.User;
+import ru.practicum.shareit.user.repository.UserRepository;
+import ru.practicum.shareit.utils.Validator;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.Collections;
+import java.util.Optional;
+
+import static java.util.Objects.isNull;
+import static java.util.Objects.nonNull;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
+@RequiredArgsConstructor
 public class ItemServiceImpl implements ItemService {
     private final ItemRepository itemRepository;
     private final UserRepository userRepository;
-    private final BookingRepository bookingRepository;
     private final CommentRepository commentRepository;
-    private final ItemRequestRepository itemRequestRepository;
-
+    private final ItemRequestRepository requestRepository;
+    private final Validator validator;
+    private final ItemDTOMapper itemDTOMapper;
 
     @Override
-    public ItemDto create(Long userId, ItemDto itemDto) {
-        validation(userId, null);
-        ItemRequest itemRequest = null;
-        if (itemDto.getRequestId() != null) {
-            itemRequest = itemRequestRepository.findById(itemDto.getRequestId()).orElseThrow(() -> new NotFoundException("ItemRequest id = " + itemDto.getRequestId() + " not found!"));
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public ItemDTO createItem(long userId, ItemCreateDTO itemCreateDTO) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IdNotFoundException(String.format("User with id=%d does not exists", userId)));
+        Long requestId = itemCreateDTO.getRequestId();
+        ItemRequest request = null;
+        if (requestId != null) {
+            request = requestRepository.findById(requestId)
+                    .orElseThrow(() -> new IdNotFoundException(
+                            String.format("Item request with id=%d does not exists", requestId)));
         }
-        return ItemMapper.toItemDto(itemRepository.save(
-                Item.builder()
-                        .name(itemDto.getName())
-                        .owner(userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User id = " + userId + " not found!")))
-                        .description(itemDto.getDescription())
-                        .available(itemDto.getAvailable())
-                        .request(itemRequest)
-                        .build()
-        ));
+        Item itemToCreate = itemDTOMapper.fromCreateDTO(user, itemCreateDTO, request);
+        Item createdItem = itemRepository.save(itemToCreate);
+        log.info("Item {} was created", createdItem);
+        return itemDTOMapper.toDTO(createdItem);
     }
 
     @Override
-    public CommentDto addComment(Long userId, Long itemId, CommentRequestDto commentRequestDto) {
-        log.info("Add comment");
-        if (commentRequestDto.getText().isBlank() || commentRequestDto.getText().isEmpty()) {
-            throw new ValidationException("Comment is empty!");
-        }
-        if (bookingRepository.findAllByBookerIdAndItemIdAndStatusAndEndBefore(
-                userId, itemId, BookingStatus.APPROVED, LocalDateTime.now()).isEmpty()) {
-            throw new ValidationException("Access error");
-        }
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public ItemDTO updateItem(long userId, long itemId, ItemUpdateDTO itemUpdateDTO) {
+        Item oldItem = itemRepository.findById(itemId)
+                .orElseThrow(() -> new IdNotFoundException(String.format("Item with id=%d does not exists", itemId)));
+        validator.validateIfUserOwnsItem(userId, itemId);
 
-        return CommentMapper.toCommentDto(commentRepository.save(Comment.builder()
-               .author(userRepository.findById(userId)
-                       .orElseThrow(() -> new NotFoundException("User id " + userId + " not found!")))
-                .item(itemRepository.findById(itemId)
-                        .orElseThrow(() -> new NotFoundException("Item id " + itemId + " not found!")))
-                .text(commentRequestDto.getText())
-                .created(LocalDateTime.now())
-                .build()));
+        Item itemToUpdate = fillInFieldsToUpdate(oldItem, itemUpdateDTO);
+        Item updatedItem = itemRepository.save(itemToUpdate);
+        log.info("{} was updated", updatedItem);
+        return itemDTOMapper.toDTO(itemToUpdate);
+    }
+
+    private Item fillInFieldsToUpdate(Item item, ItemUpdateDTO itemUpdateDTO) {
+        String name = itemUpdateDTO.getName();
+        if (nonNull(name)) {
+            item.setName(name);
+        }
+        String description = itemUpdateDTO.getDescription();
+        if (nonNull(description)) {
+            item.setDescription(description);
+        }
+        Boolean available = itemUpdateDTO.getAvailable();
+        if (nonNull(available)) {
+            item.setAvailable(available);
+        }
+        return item;
     }
 
     @Override
-    public ItemDto update(Long userId, Long itemId, ItemDto itemDto) {
-        log.info("Update item");
-        validation(userId, itemId);
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ItemDTOWithBookings getItem(long userId, long itemId) {
+        Optional<Item> item = itemRepository.findById(itemId);
+        return item.map(i -> itemDTOMapper.toDTOWithBookings(userId, i)).orElseThrow(
+                () -> new IdNotFoundException("Item with id=" + itemId + " not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Collection<ItemDTOWithBookings> getAllItems(long userId) {
+        validator.validateIfUserNotExists(userId);
+        Collection<Item> items = itemRepository.getAllItems(userId);
+        return itemDTOMapper.toDTOWithBookings(userId, items);
+    }
+
+    @Override
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public Collection<ItemDTO> searchItems(String text) {
+        if (isNull(text) || text.isBlank()) {
+            return Collections.emptyList();
+        }
+        Collection<Item> items = itemRepository.searchItems(text);
+        return itemDTOMapper.toDTO(items);
+    }
+
+    @Override
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public CommentDTO addComment(long userId, long itemId, CommentCreateDTO commentDto) {
         Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Item id " + itemId + " not found!"));
-        if (itemDto.getName() != null && !itemDto.getName().isBlank()) {
-            item.setName(itemDto.getName());
-        }
-        if (itemDto.getDescription() != null && !itemDto.getDescription().isBlank()) {
-            item.setDescription(itemDto.getDescription());
-        }
-        if (itemDto.getAvailable() != null) {
-            item.setAvailable(itemDto.getAvailable());
-        }
-        return ItemMapper.toItemDto(itemRepository.save(item));
+                .orElseThrow(() -> new IdNotFoundException(String.format("Item with id=%d does not exists", itemId)));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IdNotFoundException(String.format("User with id=%d does not exists", userId)));
+        validator.validateIfUserBookedItem(userId, itemId);
+        Comment comment = CommentDTOMapper.fromCreateDTO(user, item, commentDto);
+        Comment newComment = commentRepository.save(comment);
+        log.info("{} was added", newComment);
+        return CommentDTOMapper.toDTO(newComment);
     }
-
-    @Override
-    public ItemInfoDto findItemById(Long userId, Long itemId) {
-        log.info("Find item by id");
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Item (id " + itemId + ") not found!"));
-        BookingDateInfoDto last = BookingMapper.toBookingDateInfoDto(bookingRepository.findFirstByItemIdAndItemOwnerIdAndStartBeforeAndStatusOrderByStartDesc(itemId, userId, LocalDateTime.now(), BookingStatus.APPROVED).orElse(null));
-        BookingDateInfoDto next = BookingMapper.toBookingDateInfoDto(bookingRepository.findFirstByItemIdAndItemOwnerIdAndStartAfterAndStatusOrderByStartAsc(itemId, userId, LocalDateTime.now(), BookingStatus.APPROVED).orElse(null));
-        Collection<CommentDto> comments = CommentMapper.toCommentsDtoCollection(commentRepository.findAllByItemId(itemId));
-        return ItemMapper.toItemInfoDto(item, last, next, comments);
-    }
-
-    @Override
-    public Collection<ItemInfoDto> findItemsByUserId(Long userId) {
-        log.info("Find items by user id");
-        return itemRepository.findAllByOwnerIdOrderByIdAsc(userId).stream()
-                .map(item -> ItemMapper.toItemInfoDto(item,
-                        BookingMapper.toBookingDateInfoDto(item.getBookings().isEmpty() ? null : item.getBookings().getFirst()),
-                        BookingMapper.toBookingDateInfoDto(item.getBookings().isEmpty() ? null : item.getBookings().getLast()),
-                        CommentMapper.toCommentsDtoCollection(item.getComments())))
-                .toList();
-    }
-
-    @Override
-    public Collection<ItemDto> findItemsByText(String text) {
-        log.info("Find items by text");
-        if (text.isBlank() || text.isEmpty()) return List.of();
-        return itemRepository.findByNameOrDescriptionContainingIgnoreCase(text).stream().map(ItemMapper::toItemDto).toList();
-    }
-
-    private void validation(Long userId, Long itemId) {
-        if (userId == null) {
-            throw new ValidationException("Owner id not specified!");
-        }
-        if (itemId != null && !(Objects.equals(Objects.requireNonNull(itemRepository.findById(itemId).orElse(null)).getOwner().getId(), userId))) {
-            throw new NotFoundException("Only the owner can edit an item!");
-        }
-        if (itemId != null && !itemRepository.existsById(itemId)) {
-            throw new NotFoundException("Item not found!");
-        }
-    }
-
 }

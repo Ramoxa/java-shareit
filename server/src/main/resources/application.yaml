@@ -1,0 +1,47 @@
+server:
+  port: 9090
+
+logging:
+  level:
+    org:
+      springframework:
+        orm.jpa: INFO
+        transaction: INFO
+        transaction.interceptor: INFO
+        orm.jpa.JpaTransactionManager: INFO
+      hibernate:
+        SQL: DEBUG
+        orm.jdbc.bind: TRACE
+      my: INFO
+      zalando.logbook: TRACE
+  pattern:
+    file: "%d{HH:mm:ss} %-5level %logger{36} - %msg%n"
+
+spring:
+  sql:
+    init.mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+      show_sql: true
+      jdbc: time_zone=UTC
+    properties:
+      hibernate.format_sql: true
+
+---
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/shareit
+    username: shareit
+    password: shareit
+    driverClassName: org.postgresql.Driver
+---
+spring:
+  config:
+    activate.on-profile: test
+  datasource:
+    driverClassName: org.h2.Driver
+    url: jdbc:h2:mem:shareit
+    username: shareit
+    password: shareit
+

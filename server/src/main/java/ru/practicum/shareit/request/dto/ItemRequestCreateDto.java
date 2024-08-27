@@ -1,12 +1,18 @@
 package ru.practicum.shareit.request.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-@NoArgsConstructor
-@AllArgsConstructor
 @Getter
 @Setter
-public class ItemRequestCreateDto {
-    private Long requestorId;
+@EqualsAndHashCode
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+public class ItemRequestCreateDTO {
     private String description;
 }

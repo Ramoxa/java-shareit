@@ -1,2 +1,3 @@
 # java-shareit
-Template repository for Shareit project.
+
+![Database schema](server/src/main/resources/ER.png)

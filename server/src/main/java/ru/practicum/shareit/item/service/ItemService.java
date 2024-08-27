@@ -1,22 +1,24 @@
 package ru.practicum.shareit.item.service;
 
-import ru.practicum.shareit.comment.dto.CommentDto;
-import ru.practicum.shareit.comment.dto.CommentRequestDto;
-import ru.practicum.shareit.item.dto.ItemDto;
-import ru.practicum.shareit.item.dto.ItemInfoDto;
+import ru.practicum.shareit.item.dto.comment.CommentCreateDTO;
+import ru.practicum.shareit.item.dto.comment.CommentDTO;
+import ru.practicum.shareit.item.dto.item.ItemCreateDTO;
+import ru.practicum.shareit.item.dto.item.ItemDTO;
+import ru.practicum.shareit.item.dto.item.ItemDTOWithBookings;
+import ru.practicum.shareit.item.dto.item.ItemUpdateDTO;
 
 import java.util.Collection;
 
 public interface ItemService {
-    ItemDto create(Long userId, ItemDto itemDto);
+    ItemDTO createItem(long userId, ItemCreateDTO itemCreateDTO);
 
-    ItemDto update(Long userId, Long itemId, ItemDto itemDto);
+    ItemDTO updateItem(long userId, long itemId, ItemUpdateDTO itemUpdateDTO);
 
-    ItemInfoDto findItemById(Long userId, Long itemId);
+    ItemDTOWithBookings getItem(long userId, long itemId);
 
-    Collection<ItemInfoDto> findItemsByUserId(Long userId);
+    Collection<ItemDTOWithBookings> getAllItems(long userId);
 
-    Collection<ItemDto> findItemsByText(String text);
+    Collection<ItemDTO> searchItems(String text);
 
-    CommentDto addComment(Long userId, Long itemId, CommentRequestDto commentRequestDto);
+    CommentDTO addComment(long userId, long itemId, CommentCreateDTO comment);
 }

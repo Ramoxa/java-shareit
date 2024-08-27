@@ -1,4 +1,4 @@
 package ru.practicum.shareit.exception;
 
-record ErrorResponse(String error, String description) {
+public record ErrorResponse(String error, String description) {
 }

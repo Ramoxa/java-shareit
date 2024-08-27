@@ -8,41 +8,46 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import lombok.*;
-import ru.practicum.shareit.booking.model.Booking;
-import ru.practicum.shareit.comment.model.Comment;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import ru.practicum.shareit.request.model.ItemRequest;
 import ru.practicum.shareit.user.model.User;
 
-import java.util.List;
-
-@Entity
-@Table(name = "items")
-@Builder
 @Getter
 @Setter
-@AllArgsConstructor
+@ToString
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Entity
+@Table(name = "items")
 public class Item {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private long id;
+
+    @Column(name = "name", nullable = false)
     private String name;
+
+    @Column(name = "description", nullable = false)
     private String description;
-    @Column(name = "is_available")
-    private Boolean available;
+
+    @Column(name = "is_available", nullable = false)
+    private boolean available;
+
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
+    @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "request_id", referencedColumnName = "id")
+    @JoinColumn(name = "request_id")
     private ItemRequest request;
-    @OneToMany(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private List<Booking> bookings;
-    @OneToMany(fetch = FetchType.LAZY)
-    @JoinColumn(name = "item_id")
-    private List<Comment> comments;
+
 }
